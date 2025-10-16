@@ -34,10 +34,10 @@ with open("data/raw/USA Housing Dataset.csv", "r") as infile:
     with open("output.txt", "w") as outfile:
         # Loop through each line in the input file
         for line in infile:
-            rowOfData = line.split(",")
+            #rowOfData = line.split(",")
 
             
             # Write the modified line to the output file
-            outfile.write(outLine)
+            outfile.write(line)
 
 
