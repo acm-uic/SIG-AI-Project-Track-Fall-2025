@@ -2,7 +2,7 @@
 Shrey Deshpande  
 Dominik Styka  
 Emilio Calvo  
-Andres Felipe Quesada de Elgin illinlois  
+Andres Felipe Quesada de Elgin Illinois  
 Parth Prajapati  
 Sammy Patel  
 Amir Bogenbai  
