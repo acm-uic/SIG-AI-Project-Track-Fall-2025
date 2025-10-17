@@ -34,10 +34,18 @@ with open("data/raw/USA Housing Dataset.csv", "r") as infile:
     with open("output.txt", "w") as outfile:
         # Loop through each line in the input file
         for line in infile:
-            #rowOfData = line.split(",")
+            if(line[0]=="d"):
+                continue
+
+            date,price,bedrooms,bathrooms,sqft_living,sqft_lot,floors,waterfront,view,condition,sqft_above,sqft_basement,yr_built,yr_renovated,street,city,statezip,country = line.split(",")
+            date = date[:10]
+            price = float(price)
+
+
+            array = ",".join([date,price,bedrooms,bathrooms,sqft_living,sqft_lot,floors,waterfront,view,condition,sqft_above,sqft_basement,yr_built,yr_renovated,street,city,statezip,country])
 
             
             # Write the modified line to the output file
-            outfile.write(line)
+            outfile.write(array)
 
 
