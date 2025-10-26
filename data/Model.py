@@ -12,7 +12,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error,r2_score
 relative_path = "clean/Clean-USA-Housing-Dataset.csv"
 absolute_path = os.path.abspath(relative_path)
 
-df = pd.read_csv(absolute_path)
+df = pd.read_csv("clean/Clean-USA-Housing-Dataset.csv")
 
 interaction_cols = [
     "Lot-Living Ratio",
