@@ -42,6 +42,33 @@ model = SGDRegressor(
 
 n_epochs = 200
 
-train_mae
+train_mae, val_mae = [], []
+train_rmse, val_rmse = [], []
+train_r2, val_r2 = [], []
+
+for epoch in range(n_epochs):
+    model.partial_fit(X_train, y_train)
+
+    #Predictions
+    y_pred_train = model.predict(X_train)
+    y_pred_val = model.predict(X_val)
+
+    # Metrics
+    train_mae.append(mean_absolute_error(y_train, y_pred_train))
+    val_mae.append(mean_absolute_error(y_val, y_pred_val))
+
+    train_rmse.append(np.sqrt(mean_squared_error(y_train, y_pred_train)))
+    val_rmse.append(np.sqrt(mean_squared_error(y_val, y_pred_val)))
+
+    train_r2.append(r2_score(y_train, y_pred_train))
+    val_r2.append(r2_score(y_val, y_pred_val))
+    if epoch >0 and val_mae[-1] > min(val_mae[:-1]):
+        print(f'Early stopping after epoch {epoch+1}')
+        break
+
+y_pred_test = model.predict(X_test)
+test_mae = mean_absolute_error(y_test, y_pred_test)
+test_rmse = np.sqrt(mean_squared_error(y_test, y_pred_test))
+test_r2 = r2_score(y_test, y_pred_test)
 
 print(df)
