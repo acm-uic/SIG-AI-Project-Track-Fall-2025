@@ -112,8 +112,9 @@ train_r2, val_r2 = [], []
 for epoch in range(n_epochs):
     model.partial_fit(
         X_train, y_train
-    )  # `warm_state=True` allows this to work on previous epoch
-
+        `warm_state=True` # allows this to work on previous epoch
+    )
+        
     y_pred_train = model.predict(X_train)  # Training
     y_pred_val = model.predict(X_val)  # Validation
 
