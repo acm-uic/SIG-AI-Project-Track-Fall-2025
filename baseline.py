@@ -92,11 +92,11 @@ X_val, X_test, y_val, y_test = train_test_split(
 model = SGDRegressor(
     loss="squared_error",  # In the slides I had this as `squared_loss`, I meant this
     penalty=None,  # No penalty to keep it purely linear
+    max_iter=200, # 200 epochs
+    random_state=42,
     learning_rate="constant",  # Can change this to `optimal` to make smoother changes in metrics
     eta0=1e-3,  # Sweet spot where it doesn't diverge and converges quickly
-    max_iter=200,  # 200 epochs
-    random_state=42,
-    warm_start=True,  # Allows for continual calls of .partial_fit()
+    warm_start=True  # Allows for continual calls of .partial_fit()
 )
 
 # |---------------|
@@ -110,10 +110,7 @@ train_rmse, val_rmse = [], []
 train_r2, val_r2 = [], []
 
 for epoch in range(n_epochs):
-    model.partial_fit(
-        X_train, y_train
-        `warm_state=True` # allows this to work on previous epoch
-    )
+    model.partial_fit(X_train, y_train)
         
     y_pred_train = model.predict(X_train)  # Training
     y_pred_val = model.predict(X_val)  # Validation
