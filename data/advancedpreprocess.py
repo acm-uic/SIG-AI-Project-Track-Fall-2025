@@ -25,52 +25,8 @@ df["SUPPLY_DENSITY"] = df["ACTIVE_LISTINGS"] / df["WEEKS_OF_SUPPLY"]
 
 df["OFF_MARKET_RATE"] = df["OFF_MARKET_IN_TWO_WEEKS"] / df["ACTIVE_LISTINGS"]
 
-
-# Lagging Function
-def lagData(df, col, n, newColName):
-    df = df.copy()
-    df = df.sort_values(["REGION_TYPE", "PERIOD_BEGIN"])
-    df["TARGET_DATE"] = df.apply(
-        lambda r: r["PERIOD_BEGIN"] - pd.Timedelta(weeks=(r["DURATION"] * n)),
-        axis=1,
-    )
-
-    lookup = df[["REGION_TYPE", "PERIOD_BEGIN", col]].copy()
-    lookup.rename(columns={col: newColName}, inplace=True)
-    lookup.rename(columns={"PERIOD_BEGIN": "lookupDate"}, inplace=True)
-
-    df = pd.merge(
-        df,
-        lookup,
-        left_on=["REGION_TYPE", "TARGET_DATE"],
-        right_on=["REGION_TYPE", "lookupDate"],
-        how="left",
-        suffixes=("", "_lag"),
-    )
-
-    df.drop(columns=["TARGET_DATE", "lookupDate"], inplace=True)
-
-    return df
-
-
-# Lagged Columns
-# MEDIAN_SALE_PRICE_lag1 (1 period)
-df = lagData(df, "MEDIAN_SALE_PRICE", 1, "MEDIAN_SALE_PRICE_lag1")
-
-# MEDIAN_SALE_PRICE_lag3 (3 periods)
-df = lagData(df, "MEDIAN_SALE_PRICE", 3, "MEDIAN_SALE_PRICE_lag3")
-
-# MEDIAN_SALE_PRICE_lag12 (12 periods)
-df = lagData(df, "MEDIAN_SALE_PRICE", 12, "MEDIAN_SALE_PRICE_lag12")
-
-# ACTIVE_LISTINGS_lag1 (1 period)
-df = lagData(df, "ACTIVE_LISTINGS", 1, "ACTIVE_LISTINGS_lag1")
-
-# WEEKS_OF_SUPPLY_lag1 (1 period)
-df = lagData(df, "WEEKS_OF_SUPPLY", 1, "WEEKS_OF_SUPPLY_lag1")
-
-# MEDIAN_DAYS_ON_MARKET_lag12 (12 periods)
-df = lagData(df, "MEDIAN_DAYS_ON_MARKET", 12, "MEDIAN_DAYS_ON_MARKET_lag12")
+# Deletion
+df.drop(columns=["DATE", "PERIOD_END"], inplace=True)
 
 # Get Dataframe as a CSV
 output_dir = "clean"
