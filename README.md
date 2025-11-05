@@ -1,11 +1,28 @@
-# SIG-AI-Project-Track-Fall-2025-
-Shrey Deshpande  
-Dominik Styka  
-Emilio Calvo  
-Andres Felipe Quesada de Elgin illinlois  
-Parth Prajapati  
-Sammy Patel  
+# SIG-AI-Project-Track-Fall-2025
+Ahmed Yousef 
+
+Andres Quesada 
+
+Parth Prajapati
+
+Seungwon Jeong 
+
+Akezhan Aitmukhan
+
+Antonio Unabia 
+
+Charles Tran 
+
+David Andras
+
+Dominik Styka
+
+Emilio Calvo
+
+Sammy Patel
+
+Shrey Deshpande
+
 Amir Bogenbai  
-Seungwon Jeong
+
 Mohammad Alfaiz
-Antonio Unabia
