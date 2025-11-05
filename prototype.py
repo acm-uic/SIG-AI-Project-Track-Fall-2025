@@ -1,6 +1,7 @@
 # Imports
 import json
 import os
+import random
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -11,6 +12,16 @@ import torch.nn as nn
 from sklearn.compose import ColumnTransformer
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+# Set random seed
+SEED = 42
+os.environ["PYTHONHASHSEED"] = str(SEED)
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+torch.cuda.manual_seed_all(SEED)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 # Load Dataset
 DATA_PATH = Path("data/clean/(Clean) USA Housing Dataset.csv")
@@ -224,19 +235,60 @@ for epoch in range(1, EPOCHS + 1):
 
     print(f"Epoch {epoch:02d} | Train RMSE={train_rmse:.2f} | Val RMSE={val_rmse:.2f}")
 
+print("\n=== Test Set Performance ===")
+print(f"Val MAE: {val_mae_hist[-1]:.2f}")
+print(f"Val RMSE: {val_rmse_hist[-1]:.2f}")
+print(f"Val R^2: {val_r2_hist[-1]:.4f}")
+
+n_epochs = range(1, len(train_mae_hist) + 1)
+
+plt.figure(figsize=(12, 4))
+
+# MAE
+plt.subplot(1, 3, 1)
+plt.plot(n_epochs, train_mae_hist, label="Train MAE")
+plt.plot(n_epochs, val_mae_hist, label="Val MAE", linestyle="--")
+plt.xlabel("Epoch")
+plt.ylabel("MAE")
+plt.title("Mean Absolute Error")
+plt.legend()
+
+# RMSE
+plt.subplot(1, 3, 2)
+plt.plot(n_epochs, train_rmse_hist, label="Train RMSE")
+plt.plot(n_epochs, val_rmse_hist, label="Val RMSE", linestyle="--")
+plt.xlabel("Epoch")
+plt.ylabel("RMSE")
+plt.title("Root Mean Squared Error")
+plt.legend()
+
+# R^2
+plt.subplot(1, 3, 3)
+plt.plot(n_epochs, train_r2_hist, label="Train R^2")
+plt.plot(n_epochs, val_r2_hist, label="Val R^2", linestyle="--")
+plt.xlabel("Epoch")
+plt.ylabel("R^2")
+plt.title("Coefficient of Determination")
+plt.legend()
+
+plt.tight_layout()
+os.makedirs("results", exist_ok=True)
+plt.savefig("results/proto_metrics_plot.png")
+
+
 # Saving Model
 torch.save(model.state_dict(), MODEL_DIR / "lstm_prototype.pth")
 
 results = {
-    "train_mae_last": train_mae_hist[-1],
-    "train_rmse_last": train_rmse_hist[-1],
-    "train_r2_last": train_r2_hist[-1],
-    "val_mae_last": val_mae_hist[-1],
-    "val_rmse_last": val_rmse_hist[-1],
-    "val_r2_last": val_r2_hist[-1],
+    "train_mae": train_mae_hist,
+    "train_rmse": train_rmse_hist,
+    "train_r2": train_r2_hist,
+    "val_mae": val_mae_hist,
+    "val_rmse": val_rmse_hist,
+    "val_r2": val_r2_hist,
 }
 
-with open(RESULTS_DIR / "lstm_results.json", "w") as f:
+with open(RESULTS_DIR / "proto_results.json", "w") as f:
     json.dump(results, f, indent=4)
 
 print("\nModel & metrics saved.")
