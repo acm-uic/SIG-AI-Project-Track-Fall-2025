@@ -207,3 +207,6 @@ marimo/_lsp/
 __marimo__/
 data/raw/RedFinDataset.csv
 data/clean/(Clean) RedFinDataset.csv
+data/clean/RedFinDataset/RedFinDataset_1.csv
+data/clean/RedFinDataset/RedFinDataset_12.csv
+data/clean/RedFinDataset/RedFinDataset_4.csv
