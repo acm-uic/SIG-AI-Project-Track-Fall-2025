@@ -6,19 +6,18 @@ Training script for the house‑price LSTM models.
 # Imports and basic configuration
 # --------------------------------------------------------------------------- #
 
-import argparse            # parse command‑line arguments
-import json                # read/write JSON files (for results)
-import copy                # deep‑copy of objects
-from pathlib import Path   # object‑oriented filesystem paths
+import argparse  # parse command‑line arguments
+import copy  # deep‑copy of objects
+import json  # read/write JSON files (for results)
+from pathlib import Path  # object‑oriented filesystem paths
 
-import numpy as np         # numerical operations
-import pandas as pd        # data manipulation (CSV reading, etc.)
-import torch               # deep‑learning framework
-from torch import nn, optim
-from torch.utils.data import DataLoader, TensorDataset
-
+import numpy as np  # numerical operations
+import pandas as pd  # data manipulation (CSV reading, etc.)
+import torch  # deep‑learning framework
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler
+from torch import nn, optim
+from torch.utils.data import DataLoader, TensorDataset
 
 # --------------------------------------------------------------------------- #
 # Reproducibility: set a fixed random seed
@@ -44,6 +43,7 @@ print(f"Using device: {device}")
 # Utility: turn a long time series into overlapping windows (sequences)
 # --------------------------------------------------------------------------- #
 
+
 def create_sequences(X: np.ndarray, y: np.ndarray, seq_len: int):
     # Total number of samples in the original data
     n_samples = X.shape[0]
@@ -61,9 +61,11 @@ def create_sequences(X: np.ndarray, y: np.ndarray, seq_len: int):
     # Convert lists to numpy arrays (the LSTM expects float32 tensors)
     return np.array(Xs, dtype=np.float32), np.array(ys, dtype=np.float32)
 
+
 # --------------------------------------------------------------------------- #
 # The LSTM model that will learn from the sequences
 # --------------------------------------------------------------------------- #
+
 
 class PriceLSTM(nn.Module):
     """
@@ -71,11 +73,13 @@ class PriceLSTM(nn.Module):
     It reads sequences of feature vectors and predicts the next price.
     """
 
-    def __init__(self,
-                 input_dim: int,          # number of features in one time step
-                 hidden_dim: int = 256,   # size of the LSTM memory cell
-                 num_layers: int = 2,     # how many stacked LSTM layers
-                 dropout: float = 0.3):   # probability of dropping a unit during training
+    def __init__(
+        self,
+        input_dim: int,  # number of features in one time step
+        hidden_dim: int = 256,  # size of the LSTM memory cell
+        num_layers: int = 2,  # how many stacked LSTM layers
+        dropout: float = 0.3,
+    ):  # probability of dropping a unit during training
         super().__init__()
 
         # The core LSTM – bidirectional means it looks at the past *and* future
@@ -83,23 +87,23 @@ class PriceLSTM(nn.Module):
             input_dim,
             hidden_dim,
             num_layers=num_layers,
-            batch_first=True,          # input shape: (batch, seq_len, features)
+            batch_first=True,  # input shape: (batch, seq_len, features)
             dropout=dropout if num_layers > 1 else 0.0,
-            bidirectional=True
+            bidirectional=True,
         )
 
         # Dropout layer to further reduce over‑fitting
         self.dropout = nn.Dropout(dropout)
 
         # Final linear layer that collapses the hidden state into a single number
-        self.fc = nn.Linear(hidden_dim * 2, 1)   # *2 because bidirectional
+        self.fc = nn.Linear(hidden_dim * 2, 1)  # *2 because bidirectional
 
     def forward(self, x):
         """
         Forward pass: compute the hidden states and produce a price prediction.
         """
         # Run all time steps through the LSTM
-        out, _ = self.lstm(x)          # out shape: (batch, seq_len, hidden*2)
+        out, _ = self.lstm(x)  # out shape: (batch, seq_len, hidden*2)
 
         # Take the last time step – this is what the LSTM predicts for the next day
         out = out[:, -1, :]
@@ -110,25 +114,31 @@ class PriceLSTM(nn.Module):
         # Final prediction: a single value per sample
         return self.fc(out)
 
+
 # --------------------------------------------------------------------------- #
 # Training routine for a single duration (1‑week, 4‑weeks or 12‑weeks)
 # --------------------------------------------------------------------------- #
 
-def train_model_for_duration(df: pd.DataFrame,
-                             duration: int,
-                             target_col: str,
-                             seq_len: int = 12,
-                             device: torch.device = torch.device("cpu"),
-                             batch_size: int = 64,
-                             epochs: int = 50,
-                             patience: int = 8):
-    
+
+def train_model_for_duration(
+    df: pd.DataFrame,
+    duration: int,
+    target_col: str,
+    seq_len: int = 12,
+    device: torch.device = torch.device("cpu"),
+    batch_size: int = 64,
+    epochs: int = 50,
+    patience: int = 8,
+):
+
     # -----------------------------------------------------------------------
     # Prepare the data
     # -----------------------------------------------------------------------
 
     # Make sure dates are sorted so we never look into the future
-    df = df.sort_values("DATE").reset_index(drop=True)
+    df = df.sort_values("PERIOD_BEGIN").reset_index(drop=True)
+    if "REGION_TYPE" in df.columns:
+        df = pd.get_dummies(df, columns=["REGION_TYPE"], drop_first=False)
 
     # Log‑transform the target – makes the values more normally distributed
     df[target_col] = np.log1p(df[target_col])
@@ -140,54 +150,52 @@ def train_model_for_duration(df: pd.DataFrame,
     # Separate features (X) and target (y)
     # -----------------------------------------------------------------------
 
-    feature_cols = [c for c in df.columns
-                    if c not in {"DATE", "DURATION", target_col}]
-    X = df[feature_cols].values.astype(np.float32)   # numeric matrix
-    y = df[target_col].values.astype(np.float32)     # target vector
+    feature_cols = [
+        c for c in df.columns if c not in {"PERIOD_BEGIN", "DURATION", target_col}
+    ]
+    X = df[feature_cols].values.astype(np.float32)  # numeric matrix
+    y = df[target_col].values.astype(np.float32)  # target vector
 
     # -----------------------------------------------------------------------
     # Split the data into train / val / test (time‑series split)
     # -----------------------------------------------------------------------
 
     n = X.shape[0]
-    train_end = int(0.7 * n)   # first 70 % for training
-    val_end   = int(0.85 * n)  # next 15 % for validation
+    train_end = int(0.7 * n)  # first 70 % for training
+    val_end = int(0.85 * n)  # next 15 % for validation
 
     X_train_raw, y_train_raw = X[:train_end], y[:train_end]
-    X_val_raw,   y_val_raw   = X[train_end:val_end], y[train_end:val_end]
-    X_test_raw,  y_test_raw  = X[val_end:],      y[val_end:]
+    X_val_raw, y_val_raw = X[train_end:val_end], y[train_end:val_end]
+    X_test_raw, y_test_raw = X[val_end:], y[val_end:]
 
     # -----------------------------------------------------------------------
     # Scale the numeric features (only on training data)
     # -----------------------------------------------------------------------
 
-    scaler = StandardScaler().fit(X_train_raw)   # compute mean & std on train
+    scaler = StandardScaler().fit(X_train_raw)  # compute mean & std on train
     X_train_scaled = scaler.transform(X_train_raw)
-    X_val_scaled   = scaler.transform(X_val_raw)
-    X_test_scaled  = scaler.transform(X_test_raw)
+    X_val_scaled = scaler.transform(X_val_raw)
+    X_test_scaled = scaler.transform(X_test_raw)
 
     # -----------------------------------------------------------------------
     # Create overlapping sequences for the LSTM
     # -----------------------------------------------------------------------
 
     X_train_seq, y_train_seq = create_sequences(X_train_scaled, y_train_raw, seq_len)
-    X_val_seq,   y_val_seq   = create_sequences(X_val_scaled,   y_val_raw,   seq_len)
-    X_test_seq,  y_test_seq  = create_sequences(X_test_scaled,  y_test_raw,  seq_len)
+    X_val_seq, y_val_seq = create_sequences(X_val_scaled, y_val_raw, seq_len)
+    X_test_seq, y_test_seq = create_sequences(X_test_scaled, y_test_raw, seq_len)
 
     # -----------------------------------------------------------------------
     # Wrap data in PyTorch DataLoaders (batches)
     # -----------------------------------------------------------------------
 
-    train_ds = TensorDataset(torch.tensor(X_train_seq),
-                             torch.tensor(y_train_seq))
-    val_ds   = TensorDataset(torch.tensor(X_val_seq),
-                             torch.tensor(y_val_seq))
-    test_ds  = TensorDataset(torch.tensor(X_test_seq),
-                             torch.tensor(y_test_seq))
+    train_ds = TensorDataset(torch.tensor(X_train_seq), torch.tensor(y_train_seq))
+    val_ds = TensorDataset(torch.tensor(X_val_seq), torch.tensor(y_val_seq))
+    test_ds = TensorDataset(torch.tensor(X_test_seq), torch.tensor(y_test_seq))
 
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
-    val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False)
-    test_loader  = DataLoader(test_ds,  batch_size=batch_size, shuffle=False)
+    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
+    test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
 
     # -----------------------------------------------------------------------
     # Build the model
@@ -197,26 +205,22 @@ def train_model_for_duration(df: pd.DataFrame,
 
     # Loss function (MSE) and optimizer with weight‑decay regularisation
     criterion = nn.MSELoss()
-    optimizer = optim.AdamW(model.parameters(),
-                            lr=1e-3,
-                            weight_decay=1e-4)
+    optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
 
     # Learning‑rate scheduler – reduce LR when validation stops improving
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer,
-                                                    mode="min",
-                                                    patience=3,
-                                                    factor=0.5,
-                                                    verbose=True)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode="min", patience=3, factor=0.5
+    )
 
     # -----------------------------------------------------------------------
     # Training loop with early stopping
     # -----------------------------------------------------------------------
 
     best_val_loss = float("inf")
-    counter = 0                # counts epochs without improvement
+    counter = 0  # counts epochs without improvement
 
     for epoch in range(1, epochs + 1):
-        model.train()          # enable dropout
+        model.train()  # enable dropout
         for xb, yb in train_loader:
             xb = xb.to(device)
             yb = yb.unsqueeze(1).to(device)  # make shape (batch, 1)
@@ -252,13 +256,15 @@ def train_model_for_duration(df: pd.DataFrame,
                 break
 
         # Print a short progress line
-        print(f"Epoch {epoch:02d} | Train loss={loss.item():.4f} | Val loss={val_loss:.4f}")
+        print(
+            f"Epoch {epoch:02d} | Train loss={loss.item():.4f} | Val loss={val_loss:.4f}"
+        )
 
     # -----------------------------------------------------------------------
     # Load the best model (the one with lowest validation loss)
     # -----------------------------------------------------------------------
 
-    if 'best_model_state_dict' in locals():
+    if "best_model_state_dict" in locals():
         model.load_state_dict(best_model_state_dict)
 
     # -----------------------------------------------------------------------
@@ -276,22 +282,22 @@ def train_model_for_duration(df: pd.DataFrame,
 
     # Predictions in log‑scale
     train_pred_log = _predict(train_loader)
-    val_pred_log   = _predict(val_loader)
-    test_pred_log  = _predict(test_loader)
+    val_pred_log = _predict(val_loader)
+    test_pred_log = _predict(test_loader)
 
     # True values (log‑scale) – the target vectors we used
     train_true_log = y_train_seq
-    val_true_log   = y_val_seq
-    test_true_log  = y_test_seq
+    val_true_log = y_val_seq
+    test_true_log = y_test_seq
 
     # Convert back to original price scale (inverse of log1p)
     train_pred = np.expm1(train_pred_log)
-    val_pred   = np.expm1(val_pred_log)
-    test_pred  = np.expm1(test_pred_log)
+    val_pred = np.expm1(val_pred_log)
+    test_pred = np.expm1(test_pred_log)
 
     train_true = np.expm1(train_true_log)
-    val_true   = np.expm1(val_true_log)
-    test_true  = np.expm1(test_true_log)
+    val_true = np.expm1(val_true_log)
+    test_true = np.expm1(test_true_log)
 
     # Compute metrics
     metrics = {
@@ -299,11 +305,9 @@ def train_model_for_duration(df: pd.DataFrame,
         "train_mae": mean_absolute_error(train_true, train_pred),
         "train_rmse": np.sqrt(mean_squared_error(train_true, train_pred)),
         "train_r2": r2_score(train_true, train_pred),
-
         "val_mae": mean_absolute_error(val_true, val_pred),
         "val_rmse": np.sqrt(mean_squared_error(val_true, val_pred)),
         "val_r2": r2_score(val_true, val_pred),
-
         "test_mae": mean_absolute_error(test_true, test_pred),
         "test_rmse": np.sqrt(mean_squared_error(test_true, test_pred)),
         "test_r2": r2_score(test_true, test_pred),
@@ -311,9 +315,11 @@ def train_model_for_duration(df: pd.DataFrame,
 
     return metrics, model.state_dict(), scaler
 
+
 # --------------------------------------------------------------------------- #
 # 7. Main script – orchestrate training for all three durations
 # --------------------------------------------------------------------------- #
+
 
 def main():
     # --------------------------------------------------------------
@@ -323,34 +329,36 @@ def main():
     parser = argparse.ArgumentParser(
         description="Train LSTM models for 1‑week, 4‑weeks and 12‑week data."
     )
-    parser.add_argument("--input_dir",
-                        type=Path,
-                        default=Path("clean"),
-                        help="Folder containing the cleaned CSV files.")
-    parser.add_argument("--output_dir",
-                        type=Path,
-                        default=Path("models"),
-                        help="Folder where model checkpoints and scalers will be saved.")
-    parser.add_argument("--target",
-                        type=str,
-                        default="MEDIAN_SALE_PRICE",
-                        help="Name of the target column to predict.")
-    parser.add_argument("--seq_len",
-                        type=int,
-                        default=12,
-                        help="Length of the input sequence (weeks).")
-    parser.add_argument("--batch_size",
-                        type=int,
-                        default=64,
-                        help="Batch size for training.")
-    parser.add_argument("--epochs",
-                        type=int,
-                        default=50,
-                        help="Maximum number of training epochs.")
-    parser.add_argument("--patience",
-                        type=int,
-                        default=8,
-                        help="Early‑stopping patience (epochs).")
+    parser.add_argument(
+        "--input_dir",
+        type=Path,
+        default=Path("clean"),
+        help="Folder containing the cleaned CSV files.",
+    )
+    parser.add_argument(
+        "--output_dir",
+        type=Path,
+        default=Path("models"),
+        help="Folder where model checkpoints and scalers will be saved.",
+    )
+    parser.add_argument(
+        "--target",
+        type=str,
+        default="MEDIAN_SALE_PRICE",
+        help="Name of the target column to predict.",
+    )
+    parser.add_argument(
+        "--seq_len", type=int, default=12, help="Length of the input sequence (weeks)."
+    )
+    parser.add_argument(
+        "--batch_size", type=int, default=64, help="Batch size for training."
+    )
+    parser.add_argument(
+        "--epochs", type=int, default=50, help="Maximum number of training epochs."
+    )
+    parser.add_argument(
+        "--patience", type=int, default=8, help="Early‑stopping patience (epochs)."
+    )
     args = parser.parse_args()
 
     # --------------------------------------------------------------
@@ -394,7 +402,7 @@ def main():
             device=device,
             batch_size=args.batch_size,
             epochs=args.epochs,
-            patience=args.patience
+            patience=args.patience,
         )
 
         # ----------------------------------------------------------
@@ -424,10 +432,10 @@ def main():
 
     print(f"\nAll models trained. Results written to {results_file}")
 
+
 # --------------------------------------------------------------------------- #
 # 8. Entry point – run the script
 # --------------------------------------------------------------------------- #
 
 if __name__ == "__main__":
     main()
-
